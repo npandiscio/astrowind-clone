@@ -1,399 +1,732 @@
 ---
-import Layout from '~/layouts/PageLayout.astro';
+import PageLayout from '~/layouts/PageLayout.astro';
 
-import Hero from '~/components/widgets/Hero.astro';
+import Logo from '~/components/Logo.astro';
+import Image from '~/components/common/Image.astro';
+import ToggleMenu from '~/components/common/ToggleMenu.astro';
+import ToggleTheme from '~/components/common/ToggleTheme.astro';
+import SocialShare from '~/components/common/SocialShare.astro';
+import SplitbeeAnalytics from '~/components/common/SplitbeeAnalytics.astro';
+
+import Background from '~/components/ui/Background.astro';
+import Button from '~/components/ui/Button.astro';
+import DListItem from '~/components/ui/DListItem.astro';
+import Form from '~/components/ui/Form.astro';
+import Headline from '~/components/ui/Headline.astro';
+import ItemGrid from '~/components/ui/ItemGrid.astro';
+import ItemGrid2 from '~/components/ui/ItemGrid2.astro';
+import Timeline from '~/components/ui/Timeline.astro';
+import WidgetWrapper from '~/components/ui/WidgetWrapper.astro';
+
+import BlogHeadline from '~/components/blog/Headline.astro';
+import BlogGrid from '~/components/blog/Grid.astro';
+import BlogList from '~/components/blog/List.astro';
+import BlogPagination from '~/components/blog/Pagination.astro';
+import BlogRelatedPosts from '~/components/blog/RelatedPosts.astro';
+import BlogSinglePost from '~/components/blog/SinglePost.astro';
+import BlogTags from '~/components/blog/Tags.astro';
+import ToBlogLink from '~/components/blog/ToBlogLink.astro';
+
 import Note from '~/components/widgets/Note.astro';
+import Hero from '~/components/widgets/Hero.astro';
+import Hero2 from '~/components/widgets/Hero2.astro';
+import HeroText from '~/components/widgets/HeroText.astro';
 import Features from '~/components/widgets/Features.astro';
 import Features2 from '~/components/widgets/Features2.astro';
-import Steps from '~/components/widgets/Steps.astro';
+import Features3 from '~/components/widgets/Features3.astro';
 import Content from '~/components/widgets/Content.astro';
-import BlogLatestPosts from '~/components/widgets/BlogLatestPosts.astro';
-import FAQs from '~/components/widgets/FAQs.astro';
+import Steps from '~/components/widgets/Steps.astro';
+import Steps2 from '~/components/widgets/Steps2.astro';
 import Stats from '~/components/widgets/Stats.astro';
+import Pricing from '~/components/widgets/Pricing.astro';
+import Testimonials from '~/components/widgets/Testimonials.astro';
+import Brands from '~/components/widgets/Brands.astro';
 import CallToAction from '~/components/widgets/CallToAction.astro';
+import Contact from '~/components/widgets/Contact.astro';
+import FAQs from '~/components/widgets/FAQs.astro';
+import BlogLatestPosts from '~/components/widgets/BlogLatestPosts.astro';
+import BlogHighlightedPosts from '~/components/widgets/BlogHighlightedPosts.astro';
+
+import defaultImage from '~/assets/images/default.png';
+import heroImage from '~/assets/images/hero-image.png';
+import appStoreImage from '~/assets/images/app-store.png';
+import googlePlayImage from '~/assets/images/google-play.png';
+
+import faviconIco from '~/assets/favicons/favicon.ico';
+import faviconSvg from '~/assets/favicons/favicon.svg';
+import appleTouchIcon from '~/assets/favicons/apple-touch-icon.png';
+
+import { headerData, footerData } from '~/navigation';
+import {
+  fetchPosts,
+  findLatestPosts,
+  findPostsByIds,
+  findPostsBySlugs,
+  getRelatedPosts,
+  getStaticPathsBlogList,
+  getStaticPathsBlogPost,
+  getStaticPathsBlogCategory,
+  getStaticPathsBlogTag,
+  blogPostsPerPage,
+  isBlogEnabled,
+  isBlogListRouteEnabled,
+  isBlogPostRouteEnabled,
+  isBlogCategoryRouteEnabled,
+  isBlogTagRouteEnabled,
+  isRelatedPostsEnabled,
+} from '~/utils/blog';
+import { getProjectRootDir, getRelativeUrlByFilePath } from '~/utils/directories';
+import { readingTimeRemarkPlugin, responsiveTablesRehypePlugin, lazyImagesRehypePlugin } from '~/utils/frontmatter';
+import {
+  getSizes,
+  getImagesOptimized,
+  astroAssetsOptimizer,
+  unpicOptimizer,
+  isUnpicCompatible,
+} from '~/utils/images-optimization';
+import { fetchLocalImages, findImage, adaptOpenGraphImages } from '~/utils/images';
+import {
+  trimSlash,
+  cleanSlug,
+  BLOG_BASE,
+  CATEGORY_BASE,
+  TAG_BASE,
+  POST_PERMALINK_PATTERN,
+  getCanonical,
+  getPermalink,
+  getHomePermalink,
+  getBlogPermalink,
+  getAsset,
+  applyGetPermalinks,
+} from '~/utils/permalinks';
+import { getFormattedDate, trim, toUiAmount } from '~/utils/utils';
 
 const metadata = {
-  title: 'AstroWind — Free template for creating websites with Astro + Tailwind CSS',
+  title: 'AstroWind Component Catalog',
   ignoreTitleTemplate: true,
+  description:
+    'Complete visual inventory of default AstroWind assets, components, data structures, and utilities for fast site building.',
+};
+
+const componentFiles = Object.keys(import.meta.glob('~/components/**/*.astro')).sort();
+const assetFiles = Object.keys(import.meta.glob('~/assets/**/*')).sort();
+const utilFiles = Object.keys(import.meta.glob('~/utils/*.ts')).sort();
+const layoutFiles = Object.keys(import.meta.glob('~/layouts/*.astro')).sort();
+const pageFiles = Object.keys(import.meta.glob('~/pages/**/*.{astro,md,mdx,ts}')).sort();
+
+const posts = await fetchPosts();
+const featuredPost = posts[0];
+const secondaryPost = posts[1] || posts[0];
+const latestPosts = await findLatestPosts({ count: 4 });
+const postIds = latestPosts.map((post) => post.id);
+const postSlugs = latestPosts.map((post) => post.slug);
+const postsByIds = await findPostsByIds(postIds);
+const postsBySlugs = await findPostsBySlugs(postSlugs);
+const relatedPosts = featuredPost ? await getRelatedPosts(featuredPost, 4) : [];
+
+const paginateMock = (items: unknown[], options: Record<string, unknown>) => [
+  {
+    params: options.params,
+    props: options.props,
+    pageSize: options.pageSize,
+    totalItems: items.length,
+  },
+];
+
+const blogStaticPathPreview = {
+  list: (await getStaticPathsBlogList({ paginate: paginateMock as never })).length,
+  post: (await getStaticPathsBlogPost()).length,
+  category: (await getStaticPathsBlogCategory({ paginate: paginateMock as never })).length,
+  tag: (await getStaticPathsBlogTag({ paginate: paginateMock as never })).length,
+};
+
+const localImages = await fetchLocalImages();
+const resolvedHeroImage = await findImage('~/assets/images/hero-image.png');
+const resolvedDefaultImage = await findImage('~/assets/images/default.png');
+
+const optimizedLocalImage = await getImagesOptimized(
+  heroImage,
+  {
+    alt: 'Optimized local image sample',
+    width: 640,
+    height: 360,
+    layout: 'constrained',
+  },
+  astroAssetsOptimizer
+);
+
+const optimizedRemoteImage = await getImagesOptimized(
+  'https://images.unsplash.com/photo-1519389950473-47ba0277781c',
+  {
+    alt: 'Optimized remote image sample',
+    width: 640,
+    height: 360,
+    layout: 'constrained',
+  },
+  unpicOptimizer
+);
+
+const adaptedOpenGraph = await adaptOpenGraphImages(
+  {
+    images: [{ url: '~/assets/images/default.png', width: 1200, height: 628 }],
+  },
+  new URL('https://npandiscio.github.io/astrowind-clone')
+);
+
+const utilityShowcase = {
+  blog: {
+    isBlogEnabled,
+    isBlogListRouteEnabled,
+    isBlogPostRouteEnabled,
+    isBlogCategoryRouteEnabled,
+    isBlogTagRouteEnabled,
+    isRelatedPostsEnabled,
+    blogPostsPerPage,
+    totalPosts: posts.length,
+    latestPostTitles: latestPosts.map((post) => post.title),
+    postsByIds: postsByIds.map((post) => post.slug),
+    postsBySlugs: postsBySlugs.map((post) => post.slug),
+    relatedPosts: relatedPosts.map((post) => post.slug),
+    staticPathPreview: blogStaticPathPreview,
+  },
+  directories: {
+    projectRoot: getProjectRootDir(),
+    relativeFromSrc: getRelativeUrlByFilePath('/home/npandiscio/astrowind-clone/src/components/ui/Button.astro'),
+  },
+  frontmatter: {
+    readingTimeRemarkPlugin: typeof readingTimeRemarkPlugin,
+    responsiveTablesRehypePlugin: typeof responsiveTablesRehypePlugin,
+    lazyImagesRehypePlugin: typeof lazyImagesRehypePlugin,
+  },
+  imagesOptimization: {
+    getSizesConstrained640: getSizes(640, 'constrained'),
+    getSizesFixed200: getSizes(200, 'fixed'),
+    isUnsplashCompatible: isUnpicCompatible('https://images.unsplash.com/photo-1519389950473-47ba0277781c'),
+    localSrcsetSample: optimizedLocalImage.attributes.srcset,
+    remoteSrcsetSample: optimizedRemoteImage.attributes.srcset,
+  },
+  images: {
+    localImageGlobCount: localImages ? Object.keys(localImages).length : 0,
+    resolvedHeroImageType: typeof resolvedHeroImage,
+    resolvedDefaultImageType: typeof resolvedDefaultImage,
+    adaptedOpenGraph,
+  },
+  permalinks: {
+    trimSlash: trimSlash('/docs/getting-started/'),
+    cleanSlug: cleanSlug('AstroWind Utils Demo / Feature Blocks'),
+    BLOG_BASE,
+    CATEGORY_BASE,
+    TAG_BASE,
+    POST_PERMALINK_PATTERN,
+    canonical: String(getCanonical('/catalog')), 
+    permalinkPage: getPermalink('/contact'),
+    permalinkPost: getPermalink('get-started-website-with-astro-tailwind-css', 'post'),
+    homePermalink: getHomePermalink(),
+    blogPermalink: getBlogPermalink(),
+    rssAsset: getAsset('/rss.xml'),
+    mappedMenu: applyGetPermalinks({ href: { type: 'blog' }, nested: [{ href: { type: 'asset', url: '/rss.xml' } }] }),
+  },
+  utils: {
+    formattedDate: getFormattedDate(new Date('2026-01-15T00:00:00Z')),
+    trim: trim('///astrowind///', '/'),
+    toUiAmount: [toUiAmount(980), toUiAmount(12400), toUiAmount(9500000), toUiAmount(2400000000)],
+  },
 };
 ---
 
-<Layout metadata={metadata}>
-  <!-- Hero Widget ******************* -->
+<PageLayout metadata={metadata}>
+  <HeroText
+    tagline="AstroWind Baseline"
+    title="AstroWind Default Catalog"
+    subtitle="A complete, live inventory of what ships in <strong>src/</strong>: assets, components, widgets, blog blocks, and utility outputs."
+    callToAction={{ text: 'Explore Component Files', href: '#component-files', variant: 'primary' }}
+    callToAction2={{ text: 'Jump to Utility Output', href: '#utility-output' }}
+  />
+
+  <Note
+    title="How to use this page:"
+    description=" This site intentionally keeps the standard AstroWind visual system and focuses on showing default building blocks in one place."
+  />
+
+  <WidgetWrapper id="component-files" containerClass="max-w-7xl">
+    <Headline
+      tagline="Source Inventory"
+      title="Everything Included in <code>src/</code>"
+      subtitle="Auto-generated file inventory so you can quickly verify default building blocks."
+    />
+
+    <div class="grid gap-8 md:grid-cols-2 lg:grid-cols-4 text-sm">
+      <div>
+        <h3 class="font-bold mb-3">Components ({componentFiles.length})</h3>
+        <ul class="space-y-1 text-muted max-h-80 overflow-auto border rounded p-3">
+          {componentFiles.map((file) => <li>{file.replace('/src/', 'src/')}</li>)}
+        </ul>
+      </div>
+      <div>
+        <h3 class="font-bold mb-3">Assets ({assetFiles.length})</h3>
+        <ul class="space-y-1 text-muted max-h-80 overflow-auto border rounded p-3">
+          {assetFiles.map((file) => <li>{file.replace('/src/', 'src/')}</li>)}
+        </ul>
+      </div>
+      <div>
+        <h3 class="font-bold mb-3">Utilities ({utilFiles.length})</h3>
+        <ul class="space-y-1 text-muted max-h-80 overflow-auto border rounded p-3">
+          {utilFiles.map((file) => <li>{file.replace('/src/', 'src/')}</li>)}
+        </ul>
+      </div>
+      <div>
+        <h3 class="font-bold mb-3">Layouts + Pages</h3>
+        <ul class="space-y-1 text-muted max-h-80 overflow-auto border rounded p-3">
+          <li class="font-semibold text-default">Layouts ({layoutFiles.length})</li>
+          {layoutFiles.map((file) => <li>{file.replace('/src/', 'src/')}</li>)}
+          <li class="font-semibold text-default mt-4">Pages ({pageFiles.length})</li>
+          {pageFiles.map((file) => <li>{file.replace('/src/', 'src/')}</li>)}
+        </ul>
+      </div>
+    </div>
+  </WidgetWrapper>
+
+  <WidgetWrapper id="assets-demo" containerClass="max-w-7xl">
+    <Headline
+      tagline="Assets"
+      title="Image and Favicon Assets"
+      subtitle="Default images in <code>src/assets</code>, rendered with AstroWind’s own image pipeline."
+    />
+
+    <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div>
+        <Image src={heroImage} alt="Hero image" width={640} height={360} layout="responsive" class="rounded-md" />
+        <p class="text-sm mt-2 text-muted">hero-image.png</p>
+      </div>
+      <div>
+        <Image src={defaultImage} alt="Default OG image" width={640} height={360} layout="responsive" class="rounded-md" />
+        <p class="text-sm mt-2 text-muted">default.png</p>
+      </div>
+      <div>
+        <Image src={appStoreImage} alt="App Store badge" width={480} height={140} layout="responsive" class="rounded-md" />
+        <p class="text-sm mt-2 text-muted">app-store.png</p>
+      </div>
+      <div>
+        <Image src={googlePlayImage} alt="Google Play badge" width={480} height={140} layout="responsive" class="rounded-md" />
+        <p class="text-sm mt-2 text-muted">google-play.png</p>
+      </div>
+    </div>
+
+    <div class="mt-10 grid gap-6 sm:grid-cols-3 text-center">
+      <div class="rounded border p-4">
+        <img src={faviconIco} alt="favicon ico" class="w-12 h-12 mx-auto" />
+        <p class="text-sm mt-2 text-muted">favicon.ico</p>
+      </div>
+      <div class="rounded border p-4">
+        <img src={faviconSvg.src} alt="favicon svg" class="w-12 h-12 mx-auto" />
+        <p class="text-sm mt-2 text-muted">favicon.svg</p>
+      </div>
+      <div class="rounded border p-4">
+        <img src={appleTouchIcon.src} alt="apple touch icon" class="w-12 h-12 mx-auto" />
+        <p class="text-sm mt-2 text-muted">apple-touch-icon.png</p>
+      </div>
+    </div>
+  </WidgetWrapper>
+
+  <WidgetWrapper id="common-components" containerClass="max-w-7xl">
+    <Headline
+      tagline="Common Components"
+      title="Brand, Toggles, Share, and Head-Script Components"
+      subtitle="Head-related components are active globally through the layout: <code>CommonMeta</code>, <code>Favicons</code>, <code>CustomStyles</code>, <code>ApplyColorMode</code>, <code>Metadata</code>, <code>SiteVerification</code>, <code>Analytics</code>, and <code>BasicScripts</code>."
+    />
+
+    <div class="grid gap-6 md:grid-cols-2">
+      <div class="rounded border p-6 space-y-4">
+        <p class="font-semibold">Logo.astro</p>
+        <Logo />
+      </div>
+
+      <div class="rounded border p-6 space-y-4">
+        <p class="font-semibold">Toggle Components</p>
+        <div class="flex items-center gap-4">
+          <ToggleTheme />
+          <ToggleMenu />
+        </div>
+      </div>
+
+      <div class="rounded border p-6 space-y-4 md:col-span-2">
+        <p class="font-semibold">SocialShare.astro</p>
+        <SocialShare text="AstroWind component catalog" url={Astro.url} />
+      </div>
+    </div>
+
+    <SplitbeeAnalytics doNotTrack noCookieMode />
+  </WidgetWrapper>
+
+  <WidgetWrapper id="ui-components" containerClass="max-w-7xl">
+    <Headline tagline="UI Components" title="Foundational UI Primitives" subtitle="Direct demos of reusable low-level components." />
+
+    <div class="space-y-10">
+      <section class="rounded border p-6">
+        <p class="font-semibold mb-4">Button.astro</p>
+        <div class="flex flex-wrap gap-3">
+          <Button variant="primary" href="#">Primary</Button>
+          <Button variant="secondary" href="#">Secondary</Button>
+          <Button variant="tertiary" href="#">Tertiary</Button>
+          <Button variant="link" href="#">Link</Button>
+        </div>
+      </section>
+
+      <section class="rounded border p-6">
+        <p class="font-semibold mb-4">DListItem.astro</p>
+        <DListItem dt="Term">Description list-style helper block for compact reference content.</DListItem>
+      </section>
+
+      <section class="rounded border p-6">
+        <p class="font-semibold mb-4">Form.astro</p>
+        <Form
+          inputs={[
+            { type: 'text', name: 'name', label: 'Name', placeholder: 'Jane Doe' },
+            { type: 'email', name: 'email', label: 'Email', placeholder: 'jane@company.com' },
+          ]}
+          textarea={{ label: 'Message', name: 'message', rows: 4, placeholder: 'Tell us what you are building.' }}
+          disclaimer={{ label: 'I consent to being contacted.' }}
+          button="Send"
+          description="Default AstroWind contact form styles"
+        />
+      </section>
+
+      <section class="rounded border p-6">
+        <p class="font-semibold mb-4">Headline.astro</p>
+        <Headline tagline="Reusable" title="Headline block" subtitle="Tagline + title + subtitle composition." />
+      </section>
+
+      <section class="rounded border p-6">
+        <p class="font-semibold mb-4">ItemGrid.astro + ItemGrid2.astro + Timeline.astro + Background.astro + WidgetWrapper.astro</p>
+        <div class="relative rounded border p-4 overflow-hidden mb-8">
+          <Background />
+          <div class="relative">
+            <ItemGrid
+              columns={2}
+              defaultIcon="tabler:bolt"
+              items={[
+                { title: 'Speed', description: 'Utility-first structure for rapid assembly.' },
+                { title: 'Consistency', description: 'Shared component language across pages.' },
+              ]}
+            />
+          </div>
+        </div>
+
+        <ItemGrid2
+          columns={3}
+          defaultIcon="tabler:components"
+          items={[
+            { title: 'Card A', description: 'Elevated card style.' },
+            { title: 'Card B', description: 'Structured icon + text composition.' },
+            { title: 'Card C', description: 'Supports CTA per item.', callToAction: { text: 'Open', href: '#' } },
+          ]}
+        />
+
+        <div class="mt-8">
+          <Timeline
+            defaultIcon="tabler:circle-check"
+            items={[
+              { title: 'Plan', description: 'Select widgets and layout structure.' },
+              { title: 'Compose', description: 'Combine UI primitives with widget blocks.' },
+              { title: 'Ship', description: 'Deploy static output to GitHub Pages.' },
+            ]}
+          />
+        </div>
+      </section>
+    </div>
+  </WidgetWrapper>
 
   <Hero
+    tagline="Widget Demo"
+    title="Hero.astro"
+    subtitle="Primary hero section component with actions and image support."
     actions={[
-      {
-        variant: 'primary',
-        text: 'Get template',
-        href: 'https://github.com/arthelokyo/astrowind',
-        target: '_blank',
-        icon: 'tabler:download',
-      },
-      { text: 'Learn more', href: '#features' },
+      { text: 'Primary Action', href: '#widgets-showcase', variant: 'primary' },
+      { text: 'Secondary Action', href: '#blog-components' },
     ]}
-    image={{ src: '~/assets/images/hero-image.png', alt: 'AstroWind Hero Image' }}
-  >
-    <Fragment slot="title">
-      Free template for <span class="hidden xl:inline">creating websites with</span>
-      <span class="text-accent dark:text-white"> Astro 5.0</span> + Tailwind CSS
-    </Fragment>
+    image={{ src: '~/assets/images/hero-image.png', alt: 'Hero preview' }}
+  />
 
-    <Fragment slot="subtitle">
-      <span class="hidden sm:inline">
-        <span class="font-semibold">AstroWind</span> is a free, customizable and production-ready template for Astro 5.0
-        + Tailwind CSS.</span
-      >
-      <span class="block mb-1 sm:hidden font-bold text-blue-600">AstroWind: Production-ready.</span>
-      Suitable for Startups, Small Business, SaaS websites, Professional Portfolios, Marketing websites, Landing Pages &
-      Blogs.
-    </Fragment>
-  </Hero>
-
-  <!-- Note Widget ******************* -->
-
-  <Note title="Philosophy:" description="Simplicity, Best Practices and High Performance" />
-
-  <!-- Features Widget *************** -->
+  <Hero2
+    id="widgets-showcase"
+    tagline="Widget Demo"
+    title="Hero2.astro"
+    subtitle="Split-layout hero variant for marketing pages."
+    actions={[
+      { text: 'Get Started', href: '#utility-output', variant: 'primary' },
+      { text: 'See Pricing', href: '#pricing-widget' },
+    ]}
+    image={{ src: '~/assets/images/default.png', alt: 'Hero2 preview' }}
+  />
 
   <Features
-    id="features"
-    tagline="Features"
-    title="What you get with AstroWind"
-    subtitle="One of the most professional and comprehensive templates currently on the market. Most starred & forked Astro theme in 2022, 2023 and 2024."
+    title="Features.astro"
+    subtitle="Feature list with iconized items."
+    tagline="Widget Demo"
     items={[
-      {
-        title: 'Astro + Tailwind CSS Integration',
-        description:
-          'A seamless integration between two great frameworks that offer high productivity, performance and versatility.',
-        icon: 'tabler:brand-tailwind',
-      },
-      {
-        title: 'Ready-to-use Components',
-        description:
-          'Widgets made with Tailwind CSS ready to be used in Marketing Websites, SaaS, Blogs, Personal Profiles, Small Business...',
-        icon: 'tabler:components',
-      },
-      {
-        title: 'Best Practices',
-        description:
-          'Creating secure, efficient, and user-friendly websites that deliver exceptional experiences and lasting value.',
-        icon: 'tabler:list-check',
-      },
-      {
-        title: 'Excellent Page Speed',
-        description:
-          'Having a good page speed impacts organic search ranking, improves user experience (UI/UX) and increase conversion rates.',
-        icon: 'tabler:rocket',
-      },
-      {
-        title: 'Search Engine Optimization (SEO)',
-        description:
-          "SEO lies in its ability to enhance a website's visibility, driving organic traffic and enabling it to reach a wider audience.",
-        icon: 'tabler:arrows-right-left',
-      },
-      {
-        title: 'Open to new ideas and contributions',
-        description:
-          'Embracing a culture that is open to new ideas and contributions is integral fostering innovation, collaboration, and a dynamic user experience.',
-        icon: 'tabler:bulb',
-      },
+      { title: 'Production-ready', description: 'Default patterns are ready for launch.', icon: 'tabler:rocket' },
+      { title: 'SEO aware', description: 'Metadata and canonical utilities included.', icon: 'tabler:search' },
+      { title: 'Content-first', description: 'Markdown/MDX + blog collection support.', icon: 'tabler:article' },
+      { title: 'Composable', description: 'Mix widgets and primitives freely.', icon: 'tabler:components' },
     ]}
   />
-
-  <!-- Content Widget **************** -->
-
-  <Content
-    isReversed
-    tagline="Inside template"
-    title="AstroWind's Blueprint: Fun Meets Functionality!"
-    items={[
-      {
-        title: 'Built on top of Astro 5.0',
-        description:
-          'Benefiting from the performance and developer-friendly features of this modern static site generator.',
-      },
-      {
-        title: 'Styled using Tailwind CSS',
-        description:
-          'Facilitating rapid design and consistent styling with this highly popular utility-first CSS framework.',
-      },
-      {
-        title: 'Cross-browser compatibility',
-        description:
-          'Ensure your website looks and functions consistently across various web browsers, delivering a seamless experience to all users.',
-      },
-    ]}
-    image={{
-      src: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80',
-      alt: 'Colorful Image',
-    }}
-  >
-    <Fragment slot="content">
-      <h3 class="text-2xl font-bold tracking-tight dark:text-white sm:text-3xl mb-2">Building on modern foundations</h3>
-      Gain a competitive advantage by incorporating industry leading practices
-    </Fragment>
-
-    <Fragment slot="bg">
-      <div class="absolute inset-0 bg-blue-50 dark:bg-transparent"></div>
-    </Fragment>
-  </Content>
-
-  <!-- Content Widget **************** -->
-
-  <Content
-    isAfterContent
-    items={[
-      {
-        title: 'High level of customization',
-        description: `Tailor the template effortlessly to match your brand's identity and requirements, making your website distinct and saving you time.`,
-      },
-      {
-        title: 'Multiple layout possibilities',
-        description:
-          'Explore various layout options to find the structure that best presents your content, enhancing user engagement and navigation.',
-      },
-      {
-        title: 'Fully responsive design',
-        description:
-          "Ensure your website's optimal performance on various devices and screen sizes, providing a consistent and enjoyable user experience.",
-      },
-      {
-        title: 'Integration of media',
-        description:
-          'Seamlessly incorporate images, videos, and multimedia elements that enhance your content and engage visitors effectively.',
-      },
-    ]}
-    image={{
-      src: 'https://images.unsplash.com/photo-1600132806370-bf17e65e942f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2194&q=80',
-      alt: 'Blueprint Image',
-    }}
-  >
-    <Fragment slot="content">Ensure your online presence truly represents you.</Fragment>
-
-    <Fragment slot="bg">
-      <div class="absolute inset-0 bg-blue-50 dark:bg-transparent"></div>
-    </Fragment>
-  </Content>
-
-  <!-- Content Widget **************** -->
-
-  <Content
-    isReversed
-    isAfterContent
-    items={[
-      {
-        title: 'Enhanced user engagement',
-        description:
-          'Captivate your audience with interactive elements, intuitive navigation, and visually appealing layouts, encouraging longer visits.',
-      },
-      {
-        title: 'Continuous improvement',
-        description:
-          'Ensure your website stays aligned with the latest trends and technologies through regular updates and enhancements.',
-      },
-      {
-        title: 'Time and resource efficiency',
-        description:
-          'Skip the time-consuming process of building a website from scratch and launch your online presence sooner with AstroWind.',
-      },
-      {
-        title: 'Community support',
-        description: `Join the growing AstroWind community for insights, resources, and assistance, ensuring you're never alone on your web development journey.`,
-      },
-    ]}
-    image={{
-      src: 'https://images.unsplash.com/photo-1611462985358-60d3498e0364?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80',
-      alt: 'Astronauts Image',
-    }}
-  >
-    <Fragment slot="content">Designed to foster growth and success.</Fragment>
-
-    <Fragment slot="bg">
-      <div class="absolute inset-0 bg-blue-50 dark:bg-transparent"></div>
-    </Fragment>
-  </Content>
-
-  <!-- Steps Widget ****************** -->
-
-  <Steps
-    title="Get your dream website up and running in no time with AstroWind."
-    items={[
-      {
-        title: 'Step 1: <span class="font-medium">Download</span>',
-        description:
-          "Kickstart with GitHub! Either fork the AstroWind template or simply click 'Use this template'. Your canvas awaits, ready for your digital masterpiece. In just a few clicks, you've already set the foundation.",
-        icon: 'tabler:package',
-      },
-      {
-        title: 'Step 2: <span class="font-medium">Add content</span>',
-        description:
-          "Pour your vision into it. Add images, text, and all that jazz to breathe life into your digital space. Remember, it's the content that tells your story, so make it captivating.",
-        icon: 'tabler:letter-case',
-      },
-      {
-        title: 'Step 3: <span class="font-medium">Customize styles</span>',
-        description:
-          'Give it your personal touch. Tailor colors, fonts, and layouts until it feels just right. Your unique flair, amplified by AstroWind! Precision in design ensures a seamless user experience.',
-        icon: 'tabler:paint',
-      },
-      {
-        title: 'Ready!',
-        icon: 'tabler:check',
-      },
-    ]}
-    image={{
-      src: 'https://images.unsplash.com/photo-1616198814651-e71f960c3180?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=987&q=80',
-      alt: 'Steps image',
-    }}
-  />
-
-  <!-- Features2 Widget ************** -->
 
   <Features2
-    title="Most used widgets"
-    subtitle="Provides frequently used components for building websites using Tailwind CSS"
-    tagline="Components"
+    title="Features2.astro"
+    subtitle="Card-like feature grid variant."
+    tagline="Widget Demo"
     items={[
-      {
-        title: 'Headers',
-        description: "Ever tried driving without GPS? Boom! That's why websites need headers for direction.",
-        icon: 'flat-color-icons:template',
-      },
-      {
-        title: 'Heros',
-        description:
-          "Picture a superhero landing – epic, right? That's the job of a Hero section, making grand entrances!",
-        icon: 'flat-color-icons:gallery',
-      },
-      {
-        title: 'Features',
-        description:
-          'Where websites strut their stuff and show off superpowers. No holding back on the bragging rights here!',
-        icon: 'flat-color-icons:approval',
-      },
-      {
-        title: 'Content',
-        description:
-          "Dive into the meat and potatoes of a site; without it, you'd just be window shopping. Content is king.",
-        icon: 'flat-color-icons:document',
-      },
-      {
-        title: 'Call-to-Action',
-        description:
-          'That enthusiastic friend who\'s always urging, "Do it! Do it!"? Yeah, that\'s this button nudging you towards adventure.',
-        icon: 'flat-color-icons:advertising',
-      },
-      {
-        title: 'Pricing',
-        description: 'Behold the dessert menu of the website world. Tempting choices await, can you resist?',
-        icon: 'flat-color-icons:currency-exchange',
-      },
-      {
-        title: 'Testimonial',
-        description: 'Step into the gossip corner! Here, other visitors spill the beans and share the juicy details.',
-        icon: 'flat-color-icons:voice-presentation',
-      },
-      {
-        title: 'Contact',
-        description:
-          'Like a digital mailbox, but faster! Drop a line, ask a question, or send a virtual high-five. Ding! Message in.',
-        icon: 'flat-color-icons:business-contact',
-      },
-      {
-        title: 'Footers',
-        description: "The footer's like the credits of a movie but sprinkled with easter eggs. Time to hunt!",
-        icon: 'flat-color-icons:database',
-      },
-    ]}
-  >
-    <Fragment slot="bg">
-      <div class="absolute inset-0 bg-blue-50 dark:bg-transparent"></div>
-    </Fragment>
-  </Features2>
-
-  <!-- HighlightedPosts Widget ******* -->
-
-  <BlogLatestPosts
-    title="Find out more content in our Blog"
-    information={`The blog is used to display AstroWind documentation.
-                        Each new article will be an important step that you will need to know to be an expert in creating a website using Astro + Tailwind CSS.
-                        Astro is a very interesting technology. Thanks.
-                `}
-  />
-
-  <!-- FAQs Widget ******************* -->
-
-  <FAQs
-    title="Frequently Asked Questions"
-    subtitle="Dive into the following questions to gain insights into the powerful features that AstroWind offers and how it can elevate your web development journey."
-    tagline="FAQs"
-    classes={{ container: 'max-w-6xl' }}
-    items={[
-      {
-        title: 'Why AstroWind?',
-        description:
-          "Michael Knight a young loner on a crusade to champion the cause of the innocent. The helpless. The powerless in a world of criminals who operate above the law. Here he comes Here comes Speed Racer. He's a demon on wheels.",
-      },
-      {
-        title: 'What do I need to start?',
-        description:
-          'Space, the final frontier. These are the voyages of the Starship Enterprise. Its five-year mission: to explore strange new worlds. Many say exploration is part of our destiny, but it’s actually our duty to future generations.',
-      },
-      {
-        title: 'How to install the Astro + Tailwind CSS template?',
-        description:
-          "Well, the way they make shows is, they make one show. That show's called a pilot. Then they show that show to the people who make shows, and on the strength of that one show they decide if they're going to make more shows.",
-      },
-      {
-        title: "What's something that you don't understand?",
-        description:
-          "A flower in my garden, a mystery in my panties. Heart attack never stopped old Big Bear. I didn't even know we were calling him Big Bear.",
-      },
-      {
-        title: 'What is something that you would like to try again?',
-        description:
-          "A business big enough that it could be listed on the NASDAQ goes belly up. Disappears! It ceases to exist without me. No, you clearly don't know who you're talking to, so let me clue you in.",
-      },
-      {
-        title: 'If you could only ask one question to each person you meet, what would that question be?',
-        description:
-          "This is not about revenge. This is about justice. A lot of things can change in twelve years, Admiral. Well, that's certainly good to know. About four years. I got tired of hearing how young I looked.",
-      },
+      { title: 'Card Style 1', description: 'Glassmorphism style with default classes.', icon: 'tabler:sparkles' },
+      { title: 'Card Style 2', description: 'Ideal for SaaS capability grids.', icon: 'tabler:chart-bar' },
+      { title: 'Card Style 3', description: 'Fits product capability callouts.', icon: 'tabler:layout-grid' },
     ]}
   />
 
-  <!-- Stats Widget ****************** -->
+  <Features3
+    title="Features3.astro"
+    subtitle="Feature section variant with large media band."
+    tagline="Widget Demo"
+    image={{ src: '~/assets/images/hero-image.png', alt: 'Feature banner image' }}
+    items={[
+      { title: 'Media + grid hybrid', description: 'Showcase hero media and supporting bullets.', icon: 'tabler:photo' },
+      { title: 'Balanced scanning', description: 'Top visual + bottom utilities for fast read.', icon: 'tabler:eyeglass' },
+      { title: 'Default responsive', description: 'Ships responsive by default.', icon: 'tabler:device-mobile' },
+    ]}
+  />
+
+  <Content
+    title="Content.astro"
+    subtitle="Text/media composition with item checklist and CTA."
+    tagline="Widget Demo"
+    content="<p>Use this block for richer product narrative with mixed media and checklist support.</p>"
+    callToAction={{ text: 'Open Docs', href: '#component-files' }}
+    items={[
+      { title: 'Checklist item one', description: 'Supports HTML descriptions.' },
+      { title: 'Checklist item two', description: 'Uses ItemGrid under the hood.' },
+      { title: 'Checklist item three', description: 'Can reverse image/text order.' },
+    ]}
+    image={{ src: '~/assets/images/default.png', alt: 'Content widget image' }}
+  />
+
+  <Steps
+    title="Steps.astro"
+    subtitle="Timeline-oriented process section."
+    tagline="Widget Demo"
+    items={[
+      { title: 'Audit defaults', description: 'Inspect src/components, src/utils, src/assets.', icon: 'tabler:search' },
+      { title: 'Compose demos', description: 'Create a page that renders every core building block.' },
+      { title: 'Deploy', description: 'Publish static site to GitHub Pages.' },
+    ]}
+    image={{ src: '~/assets/images/hero-image.png', alt: 'Steps image' }}
+  />
+
+  <Steps2
+    title="Steps2.astro"
+    subtitle="Alternative step layout with CTA block."
+    tagline="Widget Demo"
+    callToAction={{ text: 'View Utility Output', href: '#utility-output', variant: 'primary' }}
+    items={[
+      { title: 'Collect', description: 'Gather all components and utility exports.' },
+      { title: 'Render', description: 'Generate examples with meaningful content.' },
+      { title: 'Publish', description: 'Ship as a reference site for your team.' },
+    ]}
+  />
 
   <Stats
+    title="Stats.astro"
+    subtitle="Stat tiles for social proof and KPI blocks."
+    tagline="Widget Demo"
     stats={[
-      { title: 'Downloads', amount: '132K' },
-      { title: 'Stars', amount: '24.8K' },
-      { title: 'Forks', amount: '10.3K' },
-      { title: 'Users', amount: '48.4K' },
+      { amount: toUiAmount(componentFiles.length), title: 'Component Files', icon: 'tabler:components' },
+      { amount: toUiAmount(assetFiles.length), title: 'Asset Files', icon: 'tabler:photo' },
+      { amount: toUiAmount(utilFiles.length), title: 'Utility Files', icon: 'tabler:tool' },
+      { amount: toUiAmount(posts.length), title: 'Default Blog Posts', icon: 'tabler:article' },
     ]}
   />
 
-  <!-- CallToAction Widget *********** -->
-
-  <CallToAction
-    actions={[
+  <Pricing
+    id="pricing-widget"
+    title="Pricing.astro"
+    subtitle="Comparison table with ribbon and feature bullets."
+    tagline="Widget Demo"
+    prices={[
       {
-        variant: 'primary',
-        text: 'Get template',
-        href: 'https://github.com/arthelokyo/astrowind',
-        target: '_blank',
-        icon: 'tabler:download',
+        title: 'Starter',
+        subtitle: 'For personal projects',
+        price: '0',
+        period: 'per month',
+        items: [{ description: 'Core widget access' }, { description: 'Blog system enabled' }],
+        callToAction: { text: 'Choose Starter', href: '#' },
+      },
+      {
+        title: 'Pro',
+        subtitle: 'For product teams',
+        price: '29',
+        period: 'per month',
+        hasRibbon: true,
+        ribbonTitle: 'Popular',
+        items: [{ description: 'Full component library' }, { description: 'Priority updates' }],
+        callToAction: { text: 'Choose Pro', href: '#', variant: 'primary' },
+      },
+      {
+        title: 'Scale',
+        subtitle: 'For multi-site ops',
+        price: '99',
+        period: 'per month',
+        items: [{ description: 'Team workflows' }, { description: 'Deployment support' }],
+        callToAction: { text: 'Contact Sales', href: '#contact-widget' },
       },
     ]}
-  >
-    <Fragment slot="title">
-      Astro&nbsp;+&nbsp;<br class="block sm:hidden" /><span class="sm:whitespace-nowrap">Tailwind CSS</span>
-    </Fragment>
+  />
 
-    <Fragment slot="subtitle">
-      Be very surprised by these huge fake numbers you are seeing on this page. <br class="hidden md:inline" />Don't
-      waste more time! :P
-    </Fragment>
-  </CallToAction>
-</Layout>
+  <Testimonials
+    title="Testimonials.astro"
+    subtitle="Default testimonial card composition."
+    tagline="Widget Demo"
+    testimonials={[
+      {
+        title: 'Fast launch',
+        testimonial: 'We shipped a complete marketing site in one sprint using the default blocks.',
+        name: 'Alex Morgan',
+        job: 'Product Lead',
+        image: { src: '~/assets/images/default.png', alt: 'Avatar one' },
+      },
+      {
+        title: 'Clear structure',
+        testimonial: 'The component boundaries make collaboration very efficient.',
+        name: 'Priya Patel',
+        job: 'Frontend Engineer',
+        image: { src: '~/assets/images/default.png', alt: 'Avatar two' },
+      },
+      {
+        title: 'SEO-ready',
+        testimonial: 'Metadata and permalink helpers reduced our integration work dramatically.',
+        name: 'Jordan Lee',
+        job: 'Growth Manager',
+        image: { src: '~/assets/images/default.png', alt: 'Avatar three' },
+      },
+    ]}
+    callToAction={{ text: 'Read More Stories', href: '#' }}
+  />
+
+  <Brands
+    title="Brands.astro"
+    subtitle="Logo cloud section for trust signals."
+    tagline="Widget Demo"
+    icons={['tabler:brand-github', 'tabler:brand-vercel', 'tabler:brand-astro', 'tabler:brand-tailwind']}
+    images={[
+      { src: '~/assets/images/app-store.png', alt: 'App Store' },
+      { src: '~/assets/images/google-play.png', alt: 'Google Play' },
+    ]}
+  />
+
+  <FAQs
+    title="FAQs.astro"
+    subtitle="Question-and-answer section built on ItemGrid."
+    tagline="Widget Demo"
+    items={[
+      { title: 'Does this use default AstroWind styling?', description: 'Yes. No custom design system was added.' },
+      { title: 'Are utilities included?', description: 'Yes. Utility outputs are rendered in the section below.' },
+      { title: 'Can this be repurposed as internal docs?', description: 'Yes. This page works as a team-facing starter catalog.' },
+      { title: 'Are blog blocks shown?', description: 'Yes, full blog component demos are included.' },
+    ]}
+  />
+
+  <Contact
+    id="contact-widget"
+    title="Contact.astro"
+    subtitle="Form-focused contact widget."
+    tagline="Widget Demo"
+    inputs={[
+      { type: 'text', name: 'fullName', label: 'Full Name', placeholder: 'Your full name' },
+      { type: 'email', name: 'email', label: 'Work Email', placeholder: 'name@company.com' },
+    ]}
+    textarea={{ label: 'Project Goals', name: 'projectGoals', rows: 5, placeholder: 'Describe what you need to build.' }}
+    disclaimer={{ label: 'I agree to the privacy policy.' }}
+    button="Submit"
+    description="This is a UI demo; submission is not wired to a backend."
+  />
+
+  <CallToAction
+    title="CallToAction.astro"
+    subtitle="Compact conversion block for final page sections."
+    tagline="Widget Demo"
+    actions={[
+      { text: 'Open Blog Widgets', href: '#blog-components', variant: 'primary' },
+      { text: 'Review Utility Output', href: '#utility-output' },
+    ]}
+  />
+
+  <WidgetWrapper id="blog-components" containerClass="max-w-7xl">
+    <Headline tagline="Blog Components" title="List, Grid, Single, Tags, Related, Pagination" subtitle="All default blog blocks rendered with sample content collection data." />
+
+    <div class="space-y-10">
+      <section class="rounded border p-6">
+        <p class="font-semibold mb-4">widgets/BlogLatestPosts.astro</p>
+        <BlogLatestPosts title="Latest posts widget" information="Uses findLatestPosts() under the hood." count={4} />
+      </section>
+
+      <section class="rounded border p-6">
+        <p class="font-semibold mb-4">widgets/BlogHighlightedPosts.astro</p>
+        <BlogHighlightedPosts title="Highlighted posts widget" postIds={postIds} />
+      </section>
+
+      <section class="rounded border p-6">
+        <p class="font-semibold mb-4">blog/Headline.astro + blog/Tags.astro</p>
+        <BlogHeadline title="Blog Headline Component" subtitle="Subtitle for blog heading block" />
+        {featuredPost?.tags && <BlogTags title="Tags" tags={featuredPost.tags} />}
+      </section>
+
+      <section class="rounded border p-6">
+        <p class="font-semibold mb-4">blog/Grid.astro</p>
+        <BlogGrid posts={latestPosts} />
+      </section>
+
+      <section class="rounded border p-6">
+        <p class="font-semibold mb-4">blog/List.astro</p>
+        <BlogList posts={latestPosts.slice(0, 2)} />
+      </section>
+
+      <section class="rounded border p-6">
+        <p class="font-semibold mb-4">blog/SinglePost.astro + blog/RelatedPosts.astro + blog/ToBlogLink.astro</p>
+        {
+          featuredPost && (
+            <>
+              <BlogSinglePost post={featuredPost} url={Astro.url} />
+              <ToBlogLink />
+              <BlogRelatedPosts post={featuredPost} />
+            </>
+          )
+        }
+      </section>
+
+      <section class="rounded border p-6">
+        <p class="font-semibold mb-4">blog/Pagination.astro</p>
+        <BlogPagination prevUrl={secondaryPost?.permalink} nextUrl={featuredPost?.permalink} />
+      </section>
+    </div>
+  </WidgetWrapper>
+
+  <WidgetWrapper id="utility-output" containerClass="max-w-7xl">
+    <Headline
+      tagline="Utility Output"
+      title="Live Utility Function Results"
+      subtitle="Concrete outputs from <code>src/utils/*</code> using the current repository content."
+    />
+
+    <pre class="text-xs md:text-sm rounded border p-4 overflow-auto bg-white dark:bg-slate-900">{JSON.stringify(utilityShowcase, null, 2)}</pre>
+  </WidgetWrapper>
+
+  <WidgetWrapper id="navigation-datasets" containerClass="max-w-7xl">
+    <Headline
+      tagline="Navigation Data"
+      title="Header/Footer Data Structures"
+      subtitle="Current values from <code>src/navigation.ts</code> consumed by Header/Footer widgets."
+    />
+
+    <div class="grid gap-6 md:grid-cols-2">
+      <pre class="text-xs rounded border p-4 overflow-auto bg-white dark:bg-slate-900">{JSON.stringify(headerData, null, 2)}</pre>
+      <pre class="text-xs rounded border p-4 overflow-auto bg-white dark:bg-slate-900">{JSON.stringify(footerData, null, 2)}</pre>
+    </div>
+  </WidgetWrapper>
+</PageLayout>
